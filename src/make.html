@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE LW LABS Report Generator</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+
+    <style>
+        /* --- CORE STYLES --- */
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* LOGIN OVERLAY */
+        #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .login-box { background: white; padding: 40px; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        .login-box h2 { color: #00529b; margin-top: 0; margin-bottom: 20px; font-weight: 900; }
+        .login-box input { width: 100%; padding: 12px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 6px; text-align: center; font-size: 16px; box-sizing: border-box; }
+        .login-box input:focus { border-color: #00529b; outline: none; }
+
+        /* HEADER */
+        header { 
+            height: 70px; background: #00529b; color: white; display: flex; 
+            align-items: center; justify-content: space-between; padding: 0 25px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 50;
+        }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        h1 { font-size: 20px; font-weight: 800; margin: 0; letter-spacing: 1px; color: #fff; }
+
+        /* MAIN LAYOUT */
+        main { display: flex; flex: 1; overflow: hidden; }
+        
+        /* CANVAS AREA */
+        .canvas-area { flex: 1; background: #cbd5e1; display: flex; justify-content: center; align-items: center; padding: 20px; overflow: auto; }
+        canvas { box-shadow: 0 10px 25px rgba(0,0,0,0.3); background: white; max-width: 100%; height: auto; border-radius: 8px; transition: 0.3s; }
+
+        /* SIDEBAR */
+        .sidebar { width: 400px; background: white; border-left: 1px solid #ddd; overflow-y: auto; display: flex; flex-direction: column; flex-shrink: 0; }
+        .section { padding: 15px; border-bottom: 1px solid #eee; }
+        .section-title { font-weight: bold; color: #00529b; margin-bottom: 10px; display: block; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+        
+        /* INPUTS & CHECKBOXES */
+        .row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .col { flex: 1; }
+        .lbl-check { display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 4px; cursor: pointer; }
+        .lbl-check input[type="checkbox"] { width: auto; margin: 0; cursor: pointer; accent-color: #00529b; }
+        input[type="text"], select, textarea { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-size: 13px; text-transform: uppercase; font-weight: bold; }
+        input[type="text"]:focus, select:focus, textarea:focus { border-color: #00529b; outline: none; }
+        
+        .quick-fill { background: #eff6ff; border: 1px solid #bfdbfe; color: #00529b; font-weight: bold; cursor: pointer; }
+
+        /* BUTTONS */
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 8px; font-size: 13px; transition: 0.2s; }
+        .btn-primary { background: #00529b; color: white; }
+        .btn-primary:hover { background: #003d73; }
+        .btn-secondary { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-danger { background: #fee2e2; color: #991b1b; }
+
+        /* CROPPER */
+        #cropModal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 100; display: none; align-items: center; justify-content: center; }
+        .crop-box { background: white; padding: 20px; border-radius: 8px; max-width: 90%; }
+        #cropImg { max-width: 100%; max-height: 500px; }
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen">
+        <div class="login-box">
+            <h2>THE LW LABS SECURE LOGIN</h2>
+            <input type="password" id="passInput" placeholder="Enter Password" onkeypress="if(event.key === 'Enter') login()">
+            <button class="btn btn-primary" onclick="login()">Access Generator</button>
+            <p id="loginErr" style="color:#dc2626; font-size:13px; font-weight:bold; display:none; margin-top:10px;">Incorrect Password</p>
+        </div>
+    </div>
+
+    <header>
+        <div class="header-left"><h1>THE LW LABS WORKSPACE</h1></div>
+    </header>
+
+    <main>
+        <div class="canvas-area">
+            <canvas id="cvs" width="1011" height="638"></canvas>
+        </div>
+
+        <div class="sidebar">
+            
+            <div class="section" style="background: #fffbeb; border-bottom: 2px solid #fde68a;">
+                <span class="section-title" style="color:#b45309;">📄 REPORT FORMAT</span>
+                <select id="formatSelect" class="quick-fill" style="background:#fff; border-color:#fcd34d; color:#b45309;">
+                    <option value="card">Card Size (Standard)</option>
+                    <option value="a4">A4 Paper Size (Full Certificate)</option>
+                </select>
+            </div>
+
+            <div class="section" style="background: #eff6ff;">
+                <span class="section-title">⚡ MEGA DATABASE (200+ ITEMS)</span>
+                <select id="gemSelect" class="quick-fill">
+                    <option value="">-- Type to Search --</option>
+                    
+                    <optgroup label="Precious Gemstones">
+                        <option value="ruby">Ruby (Manik)</option>
+                        <option value="blue_sapphire">Blue Sapphire (Neelam)</option>
+                        <option value="yellow_sapphire">Yellow Sapphire (Pukhraj)</option>
+                        <option value="emerald">Emerald (Panna)</option>
+                        <option value="diamond">Diamond (Heera)</option>
+                        <option value="pearl_natural">Natural Pearl (Moti)</option>
+                        <option value="coral_red">Red Coral (Moonga)</option>
+                        <option value="hessonite">Hessonite (Gomed)</option>
+                        <option value="cat_eye">Cat's Eye (Lehsunia)</option>
+                    </optgroup>
+
+                    <optgroup label="Rudraksha (1-21 Mukhi & Special)">
+                        <option value="rud_1">1 Mukhi Rudraksha</option>
+                        <option value="rud_2">2 Mukhi Rudraksha</option>
+                        <option value="rud_3">3 Mukhi Rudraksha</option>
+                        <option value="rud_4">4 Mukhi Rudraksha</option>
+                        <option value="rud_5">5 Mukhi Rudraksha</option>
+                        <option value="rud_6">6 Mukhi Rudraksha</option>
+                        <option value="rud_7">7 Mukhi Rudraksha</option>
+                        <option value="rud_8">8 Mukhi Rudraksha</option>
+                        <option value="rud_9">9 Mukhi Rudraksha</option>
+                        <option value="rud_10">10 Mukhi Rudraksha</option>
+                        <option value="rud_11">11 Mukhi Rudraksha</option>
+                        <option value="rud_12">12 Mukhi Rudraksha</option>
+                        <option value="rud_13">13 Mukhi Rudraksha</option>
+                        <option value="rud_14">14 Mukhi Rudraksha</option>
+                        <option value="rud_15">15 Mukhi Rudraksha</option>
+                        <option value="rud_16">16 Mukhi Rudraksha</option>
+                        <option value="rud_17">17 Mukhi Rudraksha</option>
+                        <option value="rud_18">18 Mukhi Rudraksha</option>
+                        <option value="rud_19">19 Mukhi Rudraksha</option>
+                        <option value="rud_20">20 Mukhi Rudraksha</option>
+                        <option value="rud_21">21 Mukhi Rudraksha</option>
+                        <option value="rud_gauri">Gauri Shankar</option>
+                        <option value="rud_ganesh">Ganesh Rudraksha</option>
+                        <option value="rud_sawar">Sawar Rudraksha</option>
+                        <option value="rud_trijuti">Trijuti Rudraksha</option>
+                    </optgroup>
+
+                    <optgroup label="Crystal Bracelets">
+                        <option value="br_amethyst">Amethyst Bracelet</option>
+                        <option value="br_rose">Rose Quartz Bracelet</option>
+                        <option value="br_tiger">Tiger Eye Bracelet</option>
+                        <option value="br_citrine">Citrine Bracelet</option>
+                        <option value="br_black">Black Tourmaline Bracelet</option>
+                        <option value="br_7chakra">7 Chakra Bracelet</option>
+                        <option value="br_green_aventurine">Green Aventurine Bracelet</option>
+                        <option value="br_lapis">Lapis Lazuli Bracelet</option>
+                        <option value="br_carnelian">Carnelian Bracelet</option>
+                        <option value="br_pyrite">Pyrite Bracelet</option>
+                        <option value="br_labradorite">Labradorite Bracelet</option>
+                        <option value="br_moonstone">Moonstone Bracelet</option>
+                        <option value="br_clear_quartz">Clear Quartz Bracelet</option>
+                        <option value="br_hematite">Hematite Bracelet</option>
+                        <option value="br_obsidian">Black Obsidian Bracelet</option>
+                        <option value="br_rhodochrosite">Rhodochrosite Bracelet</option>
+                        <option value="br_selenite">Selenite Bracelet</option>
+                        <option value="br_turquoise">Turquoise Bracelet</option>
+                        <option value="br_malachite">Malachite Bracelet</option>
+                        <option value="br_amazonite">Amazonite Bracelet</option>
+                    </optgroup>
+
+                    <optgroup label="Puja & Vastu Articles">
+                        <option value="puja_shaligram">Shaligram Shila</option>
+                        <option value="puja_parad">Parad Shivling</option>
+                        <option value="puja_gomti">Gomti Chakra</option>
+                        <option value="puja_shankh">Dakshinavarti Shankh</option>
+                        <option value="puja_rud_mala">Rudraksha Mala (5 Mukhi)</option>
+                        <option value="puja_sphatik_mala">Sphatik Mala</option>
+                        <option value="puja_tulsi_mala">Tulsi Mala</option>
+                        <option value="puja_kamalgatta">Kamalgatta Mala</option>
+                        <option value="puja_yantra">Shree Yantra</option>
+                        <option value="vastu_pyramid">Vastu Pyramid</option>
+                        <option value="vastu_tortoise">Crystal Tortoise</option>
+                        <option value="vastu_horseshoe">Black Horseshoe</option>
+                        <option value="vastu_conch">Vamavarti Shankh</option>
+                    </optgroup>
+
+                    <optgroup label="Semi-Precious Gemstones">
+                        <option value="amethyst">Amethyst</option>
+                        <option value="citrine">Citrine</option>
+                        <option value="topaz_blue">Blue Topaz</option>
+                        <option value="topaz_yellow">Yellow Topaz</option>
+                        <option value="opal">Opal</option>
+                        <option value="peridot">Peridot</option>
+                        <option value="aquamarine">Aquamarine</option>
+                        <option value="turquoise">Turquoise</option>
+                        <option value="lapis">Lapis Lazuli</option>
+                        <option value="malachite">Malachite</option>
+                        <option value="moonstone">Moonstone</option>
+                        <option value="tiger_eye">Tiger's Eye</option>
+                        <option value="garnet">Garnet</option>
+                        <option value="zircon">Zircon</option>
+                        <option value="tourmaline">Tourmaline</option>
+                        <option value="tanzanite">Tanzanite</option>
+                        <option value="iolite">Iolite</option>
+                        <option value="kyanite">Kyanite</option>
+                        <option value="spinel">Spinel</option>
+                        <option value="apatite">Apatite</option>
+                        <option value="fluorite">Fluorite</option>
+                        <option value="sodalite">Sodalite</option>
+                        <option value="rhodonite">Rhodonite</option>
+                        <option value="rhodochrosite">Rhodochrosite</option>
+                        <option value="jade">Jade</option>
+                        <option value="kunzite">Kunzite</option>
+                        <option value="morganite">Morganite</option>
+                        <option value="moldavite">Moldavite</option>
+                        <option value="amber">Amber</option>
+                        <option value="obsidian">Obsidian</option>
+                        <option value="prehnite">Prehnite</option>
+                        <option value="pyrite">Pyrite</option>
+                        <option value="selenite">Selenite</option>
+                        <option value="shungite">Shungite</option>
+                        <option value="sunstone">Sunstone</option>
+                        <option value="labradorite">Labradorite</option>
+                        <option value="onyx_black">Black Onyx</option>
+                        <option value="onyx_green">Green Onyx</option>
+                        <option value="rose_quartz">Rose Quartz</option>
+                        <option value="clear_quartz">Clear Quartz</option>
+                        <option value="smoky_quartz">Smoky Quartz</option>
+                        <option value="rutilated_quartz">Rutilated Quartz</option>
+                        <option value="aventurine">Green Aventurine</option>
+                        <option value="amazonite">Amazonite</option>
+                        <option value="agate_moss">Moss Agate</option>
+                        <option value="agate_blue">Blue Lace Agate</option>
+                        <option value="agate_dendritic">Dendritic Agate</option>
+                        <option value="jasper_red">Red Jasper</option>
+                        <option value="jasper_ocean">Ocean Jasper</option>
+                        <option value="carnelian">Carnelian</option>
+                        <option value="bloodstone">Bloodstone</option>
+                        <option value="larimar">Larimar</option>
+                        <option value="charoite">Charoite</option>
+                        <option value="serpentine">Serpentine</option>
+                        <option value="chrysocolla">Chrysocolla</option>
+                        <option value="lepidolite">Lepidolite</option>
+                        <option value="angelite">Angelite</option>
+                        <option value="howlite">Howlite</option>
+                        <option value="unakite">Unakite</option>
+                        <option value="snowflake_obsidian">Snowflake Obsidian</option>
+                    </optgroup>
+
+                    <optgroup label="Synthetic / Simulants">
+                        <option value="cz">Cubic Zirconia</option>
+                        <option value="moissanite">Moissanite</option>
+                        <option value="syn_ruby">Synthetic Ruby</option>
+                        <option value="syn_sapphire">Synthetic Sapphire</option>
+                        <option value="syn_emerald">Synthetic Emerald</option>
+                        <option value="glass">Glass / Imitation</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div class="section">
+                <span class="section-title">Images</span>
+                <label>Gemstone Photo (Auto-Crop)</label>
+                <input type="file" id="in_gem" accept="image/*">
+                <div class="row" style="margin-top:10px;">
+                    <div class="col"><label>Left Logo (Manual)</label><input type="file" id="in_logo"></div>
+                    <div class="col"><label>ISO Logo (Manual)</label><input type="file" id="in_iso"></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <span class="section-title">Report Details</span>
+                
+                <div class="row">
+                    <div class="col">
+                        <label class="lbl-check">Report No <input type="checkbox" id="chk_report" checked></label>
+                        <input type="text" id="in_report" value="000000100000">
+                    </div>
+                    <div class="col">
+                        <label class="lbl-check">Date <input type="checkbox" id="chk_date" checked></label>
+                        <input type="text" id="in_date">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <label class="lbl-check">Weight <input type="checkbox" id="chk_weight" checked></label>
+                        <input type="text" id="in_weight" value="6.06 ct">
+                    </div>
+                    <div class="col">
+                        <label class="lbl-check">Color <input type="checkbox" id="chk_color" checked></label>
+                        <input type="text" id="in_color" value="PURPLISH RED">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <label class="lbl-check">Shape & Cut <input type="checkbox" id="chk_cut" checked></label>
+                        <input type="text" id="in_cut" value="OVAL MIXED">
+                    </div>
+                    <div class="col">
+                        <label class="lbl-check">Measurement <input type="checkbox" id="chk_dim" checked></label>
+                        <input type="text" id="in_dim" value="11.70 x 9.45 x 6.04 mm">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <label class="lbl-check">Group / Species <input type="checkbox" id="chk_species" checked></label>
+                        <input type="text" id="in_species" value="NATURAL CORUNDUM">
+                    </div>
+                    <div class="col">
+                        <label class="lbl-check">Variety <input type="checkbox" id="chk_variety" checked></label>
+                        <input type="text" id="in_variety" value="NATURAL RUBY">
+                    </div>
+                </div>
+
+                <div style="margin-top:10px;">
+                    <label class="lbl-check">Comments <input type="checkbox" id="chk_comm" checked></label>
+                    <textarea id="in_comm" rows="4">INDICATIONS OF HEATING AND CLARITY ENHANCEMENT WITH RESIDUE IN FRACTURES AND CAVITIES. EXTENT: TE3 (MODERATE) / F1 (MINOR)</textarea>
+                </div>
+            </div>
+
+            <div class="section" style="background:#f8fafc;">
+                <button class="btn btn-primary" onclick="upload()">⬆ Upload to Database</button>
+                <div class="row">
+                    <button class="btn btn-secondary" onclick="printCard()"><i class="fas fa-print"></i> Print as PDF / Paper</button>
+                </div>
+                <div class="row">
+                    <button class="btn btn-secondary" onclick="dl('jpg')"><i class="fas fa-image"></i> Save JPG</button>
+                    <button class="btn btn-secondary" onclick="dl('png')"><i class="fas fa-image"></i> Save PNG</button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="cropModal">
+        <div class="crop-box">
+            <h3>Crop Image</h3>
+            <div><img id="cropImg" src=""></div>
+            <div style="margin-top:15px; text-align:right;">
+                <button class="btn btn-secondary" style="width:auto;" onclick="document.getElementById('cropModal').style.display='none'">Cancel</button>
+                <button class="btn btn-primary" style="width:auto;" onclick="doCrop()">Crop & Use</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- LOGIN FUNCTION ---
+        function login() {
+            const pass = document.getElementById('passInput').value;
+            if (pass === "lwlabs1987") {
+                document.getElementById('loginScreen').style.display = 'none';
+            } else {
+                document.getElementById('loginErr').style.display = 'block';
+            }
+        }
+
+        // FULL 200+ DATABASE
+        const db = {
+            ruby: {s:"Natural Corundum",v:"Ruby",c:"Natural inclusions visible."},
+            blue_sapphire: {s:"Natural Corundum",v:"Blue Sapphire",c:"Natural inclusions visible."},
+            yellow_sapphire: {s:"Natural Corundum",v:"Yellow Sapphire",c:"Natural inclusions visible."},
+            white_sapphire: {s:"Natural Corundum",v:"White Sapphire",c:"Natural inclusions visible."},
+            emerald: {s:"Natural Beryl",v:"Emerald",c:"Jardin inclusions visible."},
+            diamond: {s:"Natural Diamond",v:"Diamond",c:"Adamantine Luster."},
+            pearl_natural: {s:"Natural Pearl",v:"Natural Pearl",c:"Natural Orient."},
+            pearl_cultured: {s:"Cultured Pearl",v:"Cultured Pearl",c:"Cultured."},
+            coral_red: {s:"Natural Organic",v:"Red Coral",c:"Natural biological structure."},
+            coral_white: {s:"Natural Organic",v:"White Coral",c:"Natural biological structure."},
+            hessonite: {s:"Natural Garnet",v:"Hessonite",c:"Heat Wave Effect."},
+            cat_eye: {s:"Natural Chrysoberyl",v:"Cat's Eye",c:"Chatoyancy visible."},
+            rud_1: {s:"Natural Seed", v:"1 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_2: {s:"Natural Seed", v:"2 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_3: {s:"Natural Seed", v:"3 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_4: {s:"Natural Seed", v:"4 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_5: {s:"Natural Seed", v:"5 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_6: {s:"Natural Seed", v:"6 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_7: {s:"Natural Seed", v:"7 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_8: {s:"Natural Seed", v:"8 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_9: {s:"Natural Seed", v:"9 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_10: {s:"Natural Seed", v:"10 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_11: {s:"Natural Seed", v:"11 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_12: {s:"Natural Seed", v:"12 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_13: {s:"Natural Seed", v:"13 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_14: {s:"Natural Seed", v:"14 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_15: {s:"Natural Seed", v:"15 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_16: {s:"Natural Seed", v:"16 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_17: {s:"Natural Seed", v:"17 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_18: {s:"Natural Seed", v:"18 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_19: {s:"Natural Seed", v:"19 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_20: {s:"Natural Seed", v:"20 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_21: {s:"Natural Seed", v:"21 Mukhi Rudraksha", c:"Natural faces visible."},
+            rud_gauri: {s:"Natural Seed", v:"Gauri Shankar Rudraksha", c:"Naturally Conjoined."},
+            rud_ganesh: {s:"Natural Seed", v:"Ganesh Rudraksha", c:"Natural trunk protrusion."},
+            rud_sawar: {s:"Natural Seed", v:"Sawar Rudraksha", c:"Twin bead fused."},
+            rud_trijuti: {s:"Natural Seed", v:"Trijuti Rudraksha", c:"Three natural beads fused."},
+            br_amethyst: {s:"Natural Quartz",v:"Amethyst Bracelet",c:"Natural round beads."},
+            br_rose: {s:"Natural Quartz",v:"Rose Quartz Bracelet",c:"Natural round beads."},
+            br_tiger: {s:"Natural Quartz",v:"Tiger Eye Bracelet",c:"Chatoyancy visible."},
+            br_citrine: {s:"Natural Quartz",v:"Citrine Bracelet",c:"Natural inclusions."},
+            br_black: {s:"Natural Tourmaline",v:"Black Tourmaline Bracelet",c:"Opaque beads."},
+            br_7chakra: {s:"Natural Multi-Stone",v:"7 Chakra Bracelet",c:"Composite of 7 natural stones."},
+            br_green_aventurine: {s:"Natural Quartz",v:"Green Aventurine Bracelet",c:"Aventurescence visible."},
+            br_lapis: {s:"Natural Lapis Lazuli",v:"Lapis Lazuli Bracelet",c:"Pyrite inclusions visible."},
+            br_carnelian: {s:"Natural Chalcedony",v:"Carnelian Bracelet",c:"Translucent beads."},
+            br_pyrite: {s:"Natural Pyrite",v:"Pyrite Bracelet",c:"Metallic luster."},
+            br_labradorite: {s:"Natural Feldspar",v:"Labradorite Bracelet",c:"Labradorescence visible."},
+            br_moonstone: {s:"Natural Feldspar",v:"Moonstone Bracelet",c:"Adularescence visible."},
+            br_clear_quartz: {s:"Natural Quartz",v:"Clear Quartz Bracelet",c:"Transparent beads."},
+            br_hematite: {s:"Natural Hematite",v:"Hematite Bracelet",c:"Metallic luster."},
+            br_obsidian: {s:"Natural Glass",v:"Black Obsidian Bracelet",c:"Volcanic glass."},
+            br_rhodochrosite: {s:"Natural Rhodochrosite",v:"Rhodochrosite Bracelet",c:"Banded pink beads."},
+            br_selenite: {s:"Natural Gypsum",v:"Selenite Bracelet",c:"Fibrous structure."},
+            br_turquoise: {s:"Natural Turquoise",v:"Turquoise Bracelet",c:"Matrix visible."},
+            br_malachite: {s:"Natural Malachite",v:"Malachite Bracelet",c:"Banded green beads."},
+            br_amazonite: {s:"Natural Feldspar",v:"Amazonite Bracelet",c:"Blue-Green beads."},
+            puja_shaligram: {s:"Natural Fossil Stone",v:"Shaligram Shila",c:"Ammonite fossil."},
+            puja_parad: {s:"Mercury Amalgam",v:"Parad Shivling",c:"Solidified Mercury."},
+            puja_gomti: {s:"Natural Shell",v:"Gomti Chakra",c:"Natural shell whorl."},
+            puja_shankh: {s:"Natural Conch Shell",v:"Dakshinavarti Shankh",c:"Right handed conch."},
+            puja_rud_mala: {s:"Natural Seed",v:"Rudraksha Mala",c:"108+1 Beads."},
+            puja_sphatik_mala: {s:"Natural Quartz",v:"Sphatik Mala",c:"Clear Quartz beads."},
+            puja_tulsi_mala: {s:"Natural Wood",v:"Tulsi Mala",c:"Holy Basil wood."},
+            puja_kamalgatta: {s:"Natural Seed",v:"Kamalgatta Mala",c:"Lotus seeds."},
+            puja_yantra: {s:"Metal Alloy",v:"Shree Yantra",c:"Geometric etching."},
+            vastu_pyramid: {s:"Composite Material",v:"Vastu Pyramid",c:"Pyramidal structure."},
+            vastu_tortoise: {s:"Natural/Synthetic",v:"Crystal Tortoise",c:"Feng Shui item."},
+            vastu_horseshoe: {s:"Iron",v:"Black Horseshoe",c:"Used iron shoe."},
+            vastu_conch: {s:"Natural Conch Shell",v:"Vamavarti Shankh",c:"Left handed conch."},
+            amethyst: {s:"Natural Quartz",v:"Amethyst",c:"Purple color zoning."},
+            citrine: {s:"Natural Quartz",v:"Citrine",c:"Natural inclusions."},
+            topaz_blue: {s:"Natural Topaz",v:"Blue Topaz",c:"Vitreous Luster."},
+            topaz_yellow: {s:"Natural Topaz",v:"Yellow Topaz",c:"Vitreous Luster."},
+            opal: {s:"Natural Opal",v:"Opal",c:"Play of Color."},
+            peridot: {s:"Natural Olivine",v:"Peridot",c:"Lily pad inclusions."},
+            aquamarine: {s:"Natural Beryl",v:"Aquamarine",c:"Sea blue color."},
+            turquoise: {s:"Natural Turquoise",v:"Turquoise",c:"Matrix visible."},
+            lapis: {s:"Natural Lapis Lazuli",v:"Lapis Lazuli",c:"Pyrite flecks visible."},
+            malachite: {s:"Natural Malachite",v:"Malachite",c:"Banded structure."},
+            moonstone: {s:"Natural Feldspar",v:"Moonstone",c:"Adularescence visible."},
+            tiger_eye: {s:"Natural Quartz",v:"Tiger's Eye",c:"Chatoyancy visible."},
+            garnet: {s:"Natural Garnet",v:"Garnet",c:"Deep red color."},
+            zircon: {s:"Natural Zircon",v:"Zircon",c:"Doubling visible."},
+            tourmaline: {s:"Natural Tourmaline",v:"Tourmaline",c:"Pleochroism visible."},
+            tanzanite: {s:"Natural Zoisite",v:"Tanzanite",c:"Trichroism visible."},
+            iolite: {s:"Natural Iolite",v:"Iolite",c:"Violet-Blue color."},
+            kyanite: {s:"Natural Kyanite",v:"Kyanite",c:"Bladed crystals."},
+            spinel: {s:"Natural Spinel",v:"Spinel",c:"Octahedral crystals."},
+            apatite: {s:"Natural Apatite",v:"Apatite",c:"Vitreous."},
+            fluorite: {s:"Natural Fluorite",v:"Fluorite",c:"Color zoning."},
+            sodalite: {s:"Natural Sodalite",v:"Sodalite",c:"Blue with white veins."},
+            rhodonite: {s:"Natural Rhodonite",v:"Rhodonite",c:"Pink with black veins."},
+            rhodochrosite: {s:"Natural Rhodochrosite",v:"Rhodochrosite",c:"Banded pink."},
+            jade: {s:"Natural Jade",v:"Jade",c:"Tough aggregate."},
+            kunzite: {s:"Natural Spodumene",v:"Kunzite",c:"Pink color."},
+            morganite: {s:"Natural Beryl",v:"Morganite",c:"Pink color."},
+            moldavite: {s:"Natural Tektite",v:"Moldavite",c:"Gas bubbles visible."},
+            amber: {s:"Natural Amber",v:"Amber",c:"Organic resin."},
+            obsidian: {s:"Natural Glass",v:"Obsidian",c:"Volcanic glass."},
+            prehnite: {s:"Natural Prehnite",v:"Prehnite",c:"Apple green."},
+            pyrite: {s:"Natural Pyrite",v:"Pyrite",c:"Metallic luster."},
+            selenite: {s:"Natural Gypsum",v:"Selenite",c:"Fibrous structure."},
+            shungite: {s:"Natural Mineraloid",v:"Shungite",c:"Carbon based."},
+            sunstone: {s:"Natural Feldspar",v:"Sunstone",c:"Aventurescence visible."},
+            labradorite: {s:"Natural Feldspar",v:"Labradorite",c:"Labradorescence visible."},
+            onyx_black: {s:"Natural Chalcedony",v:"Black Onyx",c:"Opaque."},
+            onyx_green: {s:"Natural Chalcedony",v:"Green Onyx",c:"Translucent."},
+            rose_quartz: {s:"Natural Quartz",v:"Rose Quartz",c:"Hazy transparency."},
+            clear_quartz: {s:"Natural Quartz",v:"Clear Quartz",c:"Transparent."},
+            smoky_quartz: {s:"Natural Quartz",v:"Smoky Quartz",c:"Brownish hue."},
+            rutilated_quartz: {s:"Natural Quartz",v:"Rutilated Quartz",c:"Rutile needles visible."},
+            aventurine: {s:"Natural Quartz",v:"Green Aventurine",c:"Aventurescence visible."},
+            amazonite: {s:"Natural Feldspar",v:"Amazonite",c:"Blue-Green color."},
+            agate_moss: {s:"Natural Chalcedony",v:"Moss Agate",c:"Moss-like inclusions."},
+            agate_blue: {s:"Natural Chalcedony",v:"Blue Lace Agate",c:"Banded structure."},
+            agate_dendritic: {s:"Natural Chalcedony",v:"Dendritic Agate",c:"Fern-like inclusions."},
+            jasper_red: {s:"Natural Jasper",v:"Red Jasper",c:"Opaque."},
+            jasper_ocean: {s:"Natural Jasper",v:"Ocean Jasper",c:"Orbicular patterns."},
+            carnelian: {s:"Natural Chalcedony",v:"Carnelian",c:"Orange-Red color."},
+            bloodstone: {s:"Natural Chalcedony",v:"Bloodstone",c:"Red spots visible."},
+            larimar: {s:"Natural Pectolite",v:"Larimar",c:"Ocean blue pattern."},
+            charoite: {s:"Natural Charoite",v:"Charoite",c:"Swirling purple."},
+            serpentine: {s:"Natural Serpentine",v:"Serpentine",c:"Green mottled."},
+            chrysocolla: {s:"Natural Chrysocolla",v:"Chrysocolla",c:"Blue-green copper ore."},
+            lepidolite: {s:"Natural Mica",v:"Lepidolite",c:"Lilac mica plates."},
+            angelite: {s:"Natural Anhydrite",v:"Angelite",c:"Soft blue color."},
+            howlite: {s:"Natural Borate",v:"Howlite",c:"White with grey veins."},
+            unakite: {s:"Natural Granite",v:"Unakite",c:"Green and pink mottled."},
+            snowflake_obsidian: {s:"Natural Glass",v:"Snowflake Obsidian",c:"Cristobalite inclusions."},
+            cz: {s:"Synthetic Cubic Zirconia",v:"CZ",c:"Synthetic."},
+            moissanite: {s:"Synthetic Moissanite",v:"Moissanite",c:"Doubling visible."},
+            syn_ruby: {s:"Synthetic Corundum",v:"Synthetic Ruby",c:"Curved striae."},
+            syn_sapphire: {s:"Synthetic Corundum",v:"Synthetic Sapphire",c:"Curved striae."},
+            syn_emerald: {s:"Synthetic Beryl",v:"Synthetic Emerald",c:"Flux inclusions."},
+            glass: {s:"Man-made Glass",v:"Imitation",c:"Gas bubbles."}
+        };
+
+        const els = {
+            format: document.getElementById('formatSelect'),
+            report: document.getElementById('in_report'), date: document.getElementById('in_date'),
+            weight: document.getElementById('in_weight'), species: document.getElementById('in_species'),
+            variety: document.getElementById('in_variety'), cut: document.getElementById('in_cut'),
+            dim: document.getElementById('in_dim'), color: document.getElementById('in_color'),
+            comm: document.getElementById('in_comm')
+        };
+        
+        const chks = {
+            report: document.getElementById('chk_report'), date: document.getElementById('chk_date'),
+            weight: document.getElementById('chk_weight'), species: document.getElementById('chk_species'),
+            variety: document.getElementById('chk_variety'), cut: document.getElementById('chk_cut'),
+            dim: document.getElementById('chk_dim'), color: document.getElementById('chk_color'),
+            comm: document.getElementById('chk_comm')
+        };
+
+        const ctx = document.getElementById('cvs').getContext('2d');
+        const assets = { logo:new Image(), iso:new Image(), gem:new Image(), logoOk:false, isoOk:false, gemOk:false };
+        let cropper = null;
+
+        els.date.value = new Date().toLocaleDateString('en-GB').replace(/\//g, '.');
+
+        // --- AUTO LOAD LOGOS ---
+        assets.logo.src = 'logo.png';
+        assets.logo.onload = () => { assets.logoOk = true; draw(); };
+        
+        assets.iso.src = 'iso.png';
+        assets.iso.onload = () => { assets.isoOk = true; draw(); };
+
+        // Listeners
+        els.format.addEventListener('change', draw);
+        document.getElementById('gemSelect').addEventListener('change', function(){
+            const d = db[this.value];
+            if(d) { 
+                els.species.value=d.s; 
+                els.variety.value=d.v;
+                if(d.c) els.comm.value=d.c;
+                draw(); 
+            }
+        });
+
+        Object.values(els).forEach(el => { if(el.id !== 'formatSelect') el.addEventListener('input', draw); });
+        Object.values(chks).forEach(el => el.addEventListener('change', draw));
+
+        document.getElementById('in_logo').addEventListener('change', e => loadAsset(e, 'logo'));
+        document.getElementById('in_iso').addEventListener('change', e => loadAsset(e, 'iso'));
+
+        function loadAsset(e, key, okKey = key+'Ok') {
+            if(!e.target.files[0]) return;
+            const r = new FileReader();
+            r.onload = ev => { assets[key].src = ev.target.result; assets[key].onload = () => { assets[okKey]=true; draw(); } };
+            r.readAsDataURL(e.target.files[0]);
+        }
+
+        document.getElementById('in_gem').addEventListener('change', function(e){
+            if(e.target.files[0]){
+                const r = new FileReader();
+                r.onload = function(ev){
+                    document.getElementById('cropImg').src = ev.target.result;
+                    document.getElementById('cropModal').style.display = 'flex';
+                    if(cropper) cropper.destroy();
+                    cropper = new Cropper(document.getElementById('cropImg'), { aspectRatio: 1.33, viewMode:1 });
+                };
+                r.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        function doCrop(){
+            if(cropper){
+                assets.gem.src = cropper.getCroppedCanvas().toDataURL();
+                assets.gem.onload = function(){ assets.gemOk=true; draw(); };
+                document.getElementById('cropModal').style.display='none';
+            }
+        }
+
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            const words = text.split(' ');
+            let line = '';
+            for(let n = 0; n < words.length; n++) {
+                let testLine = line + words[n] + ' ';
+                let metrics = context.measureText(testLine);
+                if (metrics.width > maxWidth && n > 0) {
+                    context.fillText(line, x, y);
+                    line = words[n] + ' ';
+                    y += lineHeight;
+                } else { line = testLine; }
+            }
+            context.fillText(line, x, y);
+        }
+
+        // --- DYNAMIC DRAWING LOGIC (ALL LEFT ALIGNED) ---
+        function draw(){
+            const format = els.format.value;
+            
+            if (format === 'card') {
+                // --- 1. CARD SIZED LAYOUT ---
+                ctx.canvas.width = 1011;
+                ctx.canvas.height = 638;
+                
+                ctx.fillStyle = "#ffffff"; 
+                ctx.fillRect(0,0,1011,638);
+                
+                ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 2; ctx.strokeRect(1, 1, 1009, 636);
+
+                if(assets.logoOk) ctx.drawImage(assets.logo, 40, 20, 90, 90);
+                if(assets.isoOk) ctx.drawImage(assets.iso, 860, 20, 110, 110);
+
+                // HEADER
+                ctx.textAlign="center"; 
+                ctx.fillStyle="#00529b"; ctx.font="900 48px Arial, Helvetica, sans-serif"; 
+                ctx.fillText("THE LW LABS", 505, 60);
+                ctx.fillStyle="#222"; ctx.font="bold 18px Arial, Helvetica, sans-serif"; 
+                ctx.fillText("GEM TESTING AND SALES CENTER", 505, 90);
+                ctx.fillStyle="#333"; ctx.font="bold 24px Arial, Helvetica, sans-serif"; 
+                ctx.fillText("GEMOLOGICAL REPORT", 505, 140);
+
+                // LEFT ALIGNED DATA
+                const lblX = 50;  // All labels start here on the left
+                const valX = 250; // All values start here 
+                const labelFont = "bold 20px Arial", valueFont = "bold 20px Arial";
+                ctx.fillStyle = "#111";
+
+                let headerY = 185;
+                if(chks.report.checked) {
+                    ctx.textAlign = "left"; ctx.font = labelFont; ctx.fillText("REPORT NO", lblX, headerY);
+                    ctx.textAlign = "left"; ctx.font = valueFont; ctx.fillText(els.report.value.toUpperCase(), valX, headerY);
+                }
+                if(chks.date.checked) {
+                    ctx.textAlign = "left"; ctx.font = labelFont; ctx.fillText("DATE", lblX + 410, headerY);
+                    ctx.textAlign = "left"; ctx.font = valueFont; ctx.fillText(els.date.value, valX + 280, headerY);
+                }
+
+                let y = 235;
+                const r = (chk, label, val) => {
+                    if(chk.checked){
+                        ctx.textAlign = "left"; ctx.font = labelFont; ctx.fillText(label, lblX, y);
+                        ctx.textAlign = "left"; ctx.font = valueFont; ctx.fillText(val.toUpperCase(), valX, y);
+                        y += 40;
+                    }
+                };
+
+                r(chks.weight, "WEIGHT", els.weight.value);
+                r(chks.color, "COLOUR", els.color.value);
+                r(chks.cut, "SHAPE & CUT", els.cut.value);
+                r(chks.dim, "MEASUREMENT", els.dim.value);
+
+                y += 10;
+                ctx.textAlign = "left"; ctx.font = labelFont; ctx.fillText("IDENTIFICATION:", lblX, y);
+                y += 40;
+                r(chks.species, "GROUP /SPECIES", els.species.value);
+                r(chks.variety, "VARIETY", els.variety.value);
+
+                y += 30;
+                if(chks.comm.checked) {
+                    ctx.textAlign = "left"; ctx.font = labelFont; ctx.fillText("COMMENTS", lblX, y);
+                    ctx.textAlign = "left"; ctx.font = valueFont;
+                    wrapText(ctx, els.comm.value.toUpperCase(), valX, y, 460, 28);
+                }
+
+                // RIGHT SIDE (PHOTO & QR)
+                ctx.fillStyle="#1c1c1c"; ctx.fillRect(720, 160, 260, 195);
+                if(assets.gemOk) ctx.drawImage(assets.gem, 725, 165, 250, 185); 
+                ctx.textAlign="center"; ctx.font="bold 14px Arial"; ctx.fillStyle="#000"; ctx.fillText("Photo Approx", 850, 375);
+
+                if(typeof QRious !== 'undefined'){
+                    const qr = new QRious({ value: "https://lwlabsshop.com/?id="+els.report.value, size:130 });
+                    ctx.drawImage(qr.canvas, 785, 420);
+                    ctx.font="12px Arial"; ctx.fillText("Scan the QR to verify", 850, 570);
+                }
+                
+            } else {
+                
+                // --- 2. A4 PAPER SIZED LAYOUT (1240 x 1754) LEFT ALIGNED ---
+                ctx.canvas.width = 1240;
+                ctx.canvas.height = 1754;
+                
+                ctx.fillStyle = "#ffffff"; 
+                ctx.fillRect(0,0,1240,1754);
+                
+                ctx.strokeStyle = "#00529b"; ctx.lineWidth = 12; ctx.strokeRect(30, 30, 1180, 1694);
+                ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 4; ctx.strokeRect(48, 48, 1144, 1658);
+
+                if(assets.logoOk) ctx.drawImage(assets.logo, 100, 70, 150, 150);
+                if(assets.isoOk) ctx.drawImage(assets.iso, 960, 90, 180, 180);
+
+                // HEADER
+                ctx.textAlign="center"; 
+                ctx.fillStyle="#00529b"; ctx.font="900 80px Arial, Helvetica, sans-serif"; 
+                ctx.fillText("THE LW LABS", 620, 150);
+                ctx.fillStyle="#222"; ctx.font="bold 32px Arial, Helvetica, sans-serif"; 
+                ctx.fillText("GEM TESTING AND SALES CENTER", 620, 205);
+                ctx.fillStyle="#333"; ctx.font="bold 42px Arial, Helvetica, sans-serif"; 
+                ctx.fillText("GEMOLOGICAL REPORT", 620, 310);
+                
+                ctx.beginPath(); ctx.moveTo(100, 350); ctx.lineTo(1140, 350); ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth=3; ctx.stroke();
+
+                // PHOTO 
+                ctx.fillStyle="#1c1c1c"; ctx.fillRect(750, 420, 340, 255);
+                if(assets.gemOk) ctx.drawImage(assets.gem, 760, 430, 320, 235); 
+                ctx.textAlign="center"; ctx.font="bold 20px Arial"; ctx.fillStyle="#000"; ctx.fillText("Photo Approx", 920, 710);
+
+                // LEFT ALIGNED DATA
+                const lblX = 100;
+                const valX = 400;
+                const labelFont = "bold 26px Arial", valueFont = "bold 26px Arial";
+                ctx.fillStyle = "#111";
+
+                let y = 460;
+                if(chks.report.checked) {
+                    ctx.textAlign = "left"; ctx.font = labelFont; ctx.fillText("REPORT NO", lblX, y);
+                    ctx.textAlign = "left"; ctx.font = valueFont; ctx.fillText(els.report.value.toUpperCase(), valX, y);
+                    y+= 50;
+                }
+                if(chks.date.checked) {
+                    ctx.textAlign = "left"; ctx.font = labelFont; ctx.fillText("DATE", lblX, y);
+                    ctx.textAlign = "left"; ctx.font = valueFont; ctx.fillText(els.date.value, valX, y);
+                    y+= 50;
+                }
+
+                y += 60; 
+                const r = (chk, label, val) => {
+                    if(chk.checked){
+                        ctx.textAlign = "left"; ctx.font = labelFont; ctx.fillText(label, lblX, y);
+                        ctx.textAlign = "left"; ctx.font = valueFont; ctx.fillText(val.toUpperCase(), valX, y);
+                        y += 60;
+                    }
+                };
+
+                r(chks.weight, "WEIGHT", els.weight.value);
+                r(chks.color, "COLOUR", els.color.value);
+                r(chks.cut, "SHAPE & CUT", els.cut.value);
+                r(chks.dim, "MEASUREMENT", els.dim.value);
+
+                y += 40;
+                ctx.textAlign = "left"; ctx.font = labelFont; ctx.fillText("IDENTIFICATION:", lblX, y);
+                y += 60;
+                r(chks.species, "GROUP /SPECIES", els.species.value);
+                r(chks.variety, "VARIETY", els.variety.value);
+
+                y += 60;
+                if(chks.comm.checked) {
+                    ctx.textAlign = "left"; ctx.font = labelFont; ctx.fillText("COMMENTS", lblX, y);
+                    ctx.textAlign = "left"; ctx.font = valueFont;
+                    wrapText(ctx, els.comm.value.toUpperCase(), valX, y, 700, 40);
+                }
+
+                // QR Code
+                if(typeof QRious !== 'undefined'){
+                    const qr = new QRious({ value: "https://lwlabsshop.com/?id="+els.report.value, size:250 });
+                    ctx.drawImage(qr.canvas, 120, 1400);
+                    ctx.textAlign="center"; ctx.font="20px Arial"; ctx.fillText("Scan QR to verify report", 245, 1680);
+                }
+                
+                ctx.beginPath(); ctx.moveTo(850, 1620); ctx.lineTo(1100, 1620); ctx.strokeStyle = "#333"; ctx.lineWidth=2; ctx.stroke();
+                ctx.textAlign="center"; ctx.font="bold 20px Arial"; ctx.fillText("Authorized Signatory", 975, 1650);
+            }
+        }
+
+        // --- FIXED SAVE & PRINT FUNCTIONS ---
+        
+        // Save as Image Function (Fixed missing function)
+        function dl(ext){
+            const a = document.createElement('a');
+            a.download = els.report.value + "_Report." + ext;
+            a.href = document.getElementById('cvs').toDataURL('image/'+ext, 1.0);
+            a.click();
+        }
+
+        // Print Function (Fixed to handle popups better)
+        function printCard() {
+            const dataUrl = document.getElementById('cvs').toDataURL('image/png', 1.0);
+            const isA4 = els.format.value === 'a4';
+            const printWindow = window.open('', '_blank');
+            
+            if (!printWindow) {
+                alert("⚠️ Your browser blocked the print window. Please 'Allow Pop-ups' for this site to print.");
+                return;
+            }
+            
+            const cssOrientation = isA4 ? 'portrait' : 'landscape';
+            const cssSizing = isA4 ? 'max-width: 100%; height: 98vh;' : 'width: 100%; max-width: 1000px;';
+
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Print THE LW LABS Report</title>
+                        <style>
+                            body { margin: 0; display: flex; justify-content: center; align-items: center; background: #fff; padding: 20px; }
+                            @media print {
+                                @page { size: ${cssOrientation}; margin: 0; }
+                                body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                            }
+                            img { ${cssSizing} object-fit: contain; }
+                        </style>
+                    </head>
+                    <body>
+                        <img src="${dataUrl}" onload="setTimeout(() => { window.print(); window.close(); }, 500);" />
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        // --- UPLOAD TO PHP BACKEND ---
+        async function upload(){
+            const btn = document.querySelector('.btn-primary');
+            btn.innerHTML = "Saving..."; btn.disabled=true;
+            
+            let gem64=""; 
+            if(assets.gemOk){ const c=document.createElement('canvas'); c.width=assets.gem.width; c.height=assets.gem.height; c.getContext('2d').drawImage(assets.gem,0,0); gem64=c.toDataURL(); }
+            
+            const payload = {
+                reportNo: els.report.value, weight: els.weight.value,
+                species: els.species.value, variety: els.variety.value,
+                cut: els.cut.value, dimensions: els.dim.value,
+                color: els.color.value, microscopic: els.comm.value,
+                gemImage: gem64,
+                reportImage: document.getElementById('cvs').toDataURL('image/jpeg', 0.95)
+            };
+
+            try {
+                const req = await fetch('/save_report.php', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+                const rawResponse = await req.text(); 
+                
+                try {
+                    const res = JSON.parse(rawResponse);
+                    if(res.status === 'success') alert("✅ Uploaded Successfully!");
+                    else alert("Server Error: " + res.message);
+                } catch (jsonErr) { alert("Server returned an error. First 100 characters:\n\n" + rawResponse.substring(0, 100)); }
+            } catch(e) { alert("Error uploading: " + e.message); }
+            btn.innerHTML = "⬆ Upload to Database"; btn.disabled=false;
+        }
+
+        window.onload = draw;
+    </script>
+</body>
+</html>

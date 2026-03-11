@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Report | THE LW LABS GEMS</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/tsparticles-slim@2.0.6/tsparticles.slim.bundle.min.js"></script>
+
+    <style>
+        /* --- PREMIUM THEME STYLES --- */
+        :root {
+            --primary-navy: #0f172a;
+            --accent-gold: #d4af37;
+            --bg-light: #ffffff;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-navy); /* Fallback color */
+            color: var(--text-dark);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 60 FPS PARTICLE BACKGROUND */
+        #tsparticles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Keeps it behind everything */
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        }
+
+        /* HEADER (Glassmorphism) */
+        header {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+            box-shadow: 0 4px 30px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            letter-spacing: 3px;
+            margin: 0;
+            background: linear-gradient(45deg, #fff, #d4af37);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0px 2px 10px rgba(212, 175, 55, 0.2);
+        }
+        
+        .logo-sub {
+            font-size: 11px;
+            letter-spacing: 5px;
+            color: var(--accent-gold);
+            text-transform: uppercase;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+
+        /* MAIN CONTAINER */
+        main {
+            flex: 1;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 0 20px;
+            width: 100%;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 5;
+        }
+
+        /* SEARCH BOX */
+        .search-container {
+            background: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(10px);
+            padding: 45px 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.5);
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 4px solid var(--accent-gold);
+        }
+
+        h2 {
+            font-family: 'Playfair Display', serif;
+            color: var(--primary-navy);
+            margin-top: 0;
+            font-size: 28px;
+        }
+
+        .input-group {
+            display: flex;
+            max-width: 550px;
+            margin: 25px auto 0;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .input-group:focus-within {
+            border-color: var(--accent-gold);
+            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.2);
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 16px 20px;
+            border: none;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: var(--primary-navy);
+        }
+
+        .input-group input::placeholder { color: #94a3b8; font-weight: 400; }
+
+        .input-group button {
+            background: var(--primary-navy);
+            color: white;
+            border: none;
+            padding: 0 35px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .input-group button:hover {
+            background: var(--accent-gold);
+            color: var(--primary-navy);
+        }
+
+        /* LOADING & ERROR STATES */
+        #loader, #errorMessage { display: none; margin-top: 25px; }
+        .spinner {
+            border: 3px solid rgba(0,0,0,0.05);
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            border-left-color: var(--accent-gold);
+            animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .error-text { 
+            color: #ef4444; 
+            font-weight: 600; 
+            background: #fef2f2; 
+            padding: 10px 20px; 
+            border-radius: 8px; 
+            display: inline-block; 
+            border: 1px solid #fca5a5;
+        }
+
+        /* RESULT CARD */
+        #resultCard {
+            display: none;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+            overflow: hidden;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+
+        .report-header {
+            background: var(--primary-navy);
+            color: white;
+            padding: 25px 35px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid var(--accent-gold);
+        }
+
+        .report-header h3 { margin: 0; font-family: 'Playfair Display', serif; font-size: 24px; color: var(--accent-gold); }
+        .status-badge { 
+            background: rgba(16, 185, 129, 0.15); 
+            color: #10b981; 
+            padding: 6px 14px; 
+            border-radius: 30px; 
+            font-size: 12px; 
+            font-weight: 700; 
+            letter-spacing: 1.5px; 
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .report-body {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 40px;
+            padding: 40px 35px;
+        }
+
+        .gem-photo {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        }
+
+        /* ACTION BUTTONS */
+        .action-buttons { margin-top: 20px; display: flex; flex-direction: column; gap: 12px; }
+
+        .btn-download {
+            background: white;
+            color: var(--primary-navy);
+            border: 2px solid var(--primary-navy);
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-download:hover { background: var(--primary-navy); color: white; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(15, 23, 42, 0.2); }
+
+        .btn-pdf {
+            background: linear-gradient(135deg, #d4af37, #b8962e);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+        }
+
+        .btn-pdf:hover {
+            background: linear-gradient(135deg, #b8962e, #9e8125);
+            color: white;
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4);
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            row-gap: 20px;
+        }
+
+        .data-item { border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }
+
+        .data-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .data-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary-navy);
+        }
+
+        .full-width { grid-column: 1 / -1; }
+
+        /* FOOTER */
+        footer {
+            background: transparent;
+            color: rgba(255,255,255,0.6);
+            text-align: center;
+            padding: 30px;
+            font-size: 13px;
+            margin-top: auto;
+            position: relative;
+            z-index: 5;
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 768px) {
+            .report-body { grid-template-columns: 1fr; gap: 25px; padding: 25px; }
+            .data-grid { grid-template-columns: 1fr; }
+            .search-container { padding: 30px 20px; }
+            .input-group { flex-direction: column; border: none; box-shadow: none; gap: 10px; }
+            .input-group input, .input-group button { border-radius: 8px; padding: 15px; border: 2px solid #e2e8f0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="tsparticles"></div>
+
+    <header>
+        <h1 class="logo-text">THE LW LABS GEMS</h1>
+        <div class="logo-sub">Gem Testing and Sales Center</div>
+    </header>
+
+    <main>
+        <div class="search-container">
+            <h2>Verify Your Report</h2>
+            <p style="color: var(--text-muted); font-size: 15px; margin-top: 10px;">Enter your certificate number below to authenticate your gemstone.</p>
+            
+            <div class="input-group">
+                <input type="text" id="reportInput" placeholder="e.g. LW-00000001" onkeypress="handleKeyPress(event)">
+                <button onclick="fetchReport()"><i class="fas fa-shield-alt"></i> VERIFY</button>
+            </div>
+
+            <div id="loader"><div class="spinner"></div></div>
+            <div id="errorMessage"><div class="error-text"><i class="fas fa-exclamation-triangle"></i> <span id="errorText">Report not found. Please check the number.</span></div></div>
+        </div>
+
+        <div id="resultCard">
+            <div class="report-header">
+                <h3>Official Report</h3>
+                <div class="status-badge"><i class="fas fa-check-circle"></i> VERIFIED AUTHENTIC</div>
+            </div>
+            
+            <div class="report-body">
+                <div>
+                    <img id="resImage" src="" alt="Gemstone Image" class="gem-photo">
+                    
+                    <div class="action-buttons" id="downloadActions" style="display: none;">
+                        <a id="resCertLink" href="#" style="display:none;"></a>
+                        
+                        <button onclick="downloadImage()" class="btn-download">
+                            <i class="fas fa-image"></i> Download Digital Card
+                        </button>
+                        <button onclick="downloadPDF()" class="btn-download btn-pdf">
+                            <i class="fas fa-file-pdf"></i> Download Official PDF
+                        </button>
+                    </div>
+                </div>
+
+                <div class="data-grid">
+                    <div class="data-item"><div class="data-label">Report No.</div><div class="data-value" id="resNo">-</div></div>
+                    <div class="data-item"><div class="data-label">Weight</div><div class="data-value" id="resWeight">-</div></div>
+                    
+                    <div class="data-item"><div class="data-label">Species</div><div class="data-value" id="resSpecies">-</div></div>
+                    <div class="data-item"><div class="data-label">Variety</div><div class="data-value" id="resVariety">-</div></div>
+                    
+                    <div class="data-item"><div class="data-label">Shape & Cut</div><div class="data-value" id="resCut">-</div></div>
+                    <div class="data-item"><div class="data-label">Dimensions</div><div class="data-value" id="resDim">-</div></div>
+                    
+                    <div class="data-item"><div class="data-label">Color</div><div class="data-value" id="resColor">-</div></div>
+                    <div class="data-item"><div class="data-label">Transparency</div><div class="data-value" id="resClarity">-</div></div>
+                    
+                    <div class="data-item full-width">
+                        <div class="data-label">Gemmological Comments</div>
+                        <div class="data-value" id="resComm" style="font-style: italic; color: #b45309;">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        &copy; <script>document.write(new Date().getFullYear())</script> THE LW LABS Shop. All rights reserved. ISO 9001:2015 Certified.
+    </footer>
+
+    <script>
+        // --- 60 FPS PREMIUM PARTICLE CONFIGURATION ---
+        tsParticles.load("tsparticles", {
+            fpsLimit: 60,
+            background: {
+                color: { value: "transparent" } // Let the CSS gradient show
+            },
+            particles: {
+                number: {
+                    value: 70,
+                    density: { enable: true, value_area: 800 }
+                },
+                color: { value: "#d4af37" }, // Premium Gold
+                shape: { type: "circle" },
+                opacity: {
+                    value: 0.4,
+                    random: true,
+                    anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false }
+                },
+                size: {
+                    value: 3,
+                    random: true,
+                    anim: { enable: false }
+                },
+                links: {
+                    enable: true,
+                    distance: 150,
+                    color: "#d4af37",
+                    opacity: 0.2,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 1.2,
+                    direction: "none",
+                    random: true,
+                    straight: false,
+                    outModes: { default: "out" },
+                    attract: { enable: false, rotateX: 600, rotateY: 1200 }
+                }
+            },
+            interactivity: {
+                detectsOn: "canvas",
+                events: {
+                    onHover: { enable: true, mode: "grab" },
+                    resize: true
+                },
+                modes: {
+                    grab: { distance: 180, links: { opacity: 0.5 } }
+                }
+            },
+            detectRetina: true
+        });
+
+        // --- CORE FUNCTIONALITY ---
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') fetchReport();
+        }
+
+        function downloadImage() {
+            const reportNo = document.getElementById('resNo').textContent;
+            const link = document.getElementById('resCertLink');
+            
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.href = link.href;
+            downloadAnchor.download = reportNo + '_Certificate.jpg';
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            document.body.removeChild(downloadAnchor);
+        }
+
+        function downloadPDF() {
+            const reportNo = document.getElementById('resNo').textContent;
+            const imgData = document.getElementById('resCertLink').href;
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'px', format: [1011, 638] });
+            
+            doc.addImage(imgData, 'JPEG', 0, 0, 1011, 638);
+            doc.save(reportNo + '_Report.pdf');
+        }
+
+        async function fetchReport() {
+            const inputNo = document.getElementById('reportInput').value.trim().toUpperCase();
+            if (!inputNo) return;
+
+            document.getElementById('resultCard').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('loader').style.display = 'block';
+
+            try {
+                // Fetch the data
+                const endpoint = '/get_report.php?id=' + encodeURIComponent(inputNo);
+                const response = await fetch(endpoint);
+                const rawText = await response.text();
+
+                try {
+                    const res = JSON.parse(rawText);
+                    document.getElementById('loader').style.display = 'none';
+
+                    if (res.status === 'success' && res.data) {
+                        document.getElementById('resNo').textContent = res.data.reportNo || '-';
+                        document.getElementById('resWeight').textContent = res.data.weight || '-';
+                        document.getElementById('resSpecies').textContent = res.data.species || '-';
+                        document.getElementById('resVariety').textContent = res.data.variety || '-';
+                        document.getElementById('resCut').textContent = res.data.cut || '-';
+                        document.getElementById('resDim').textContent = res.data.dimensions || '-';
+                        document.getElementById('resColor').textContent = res.data.color || '-';
+                        document.getElementById('resClarity').textContent = res.data.clarity || '-';
+                        document.getElementById('resComm').textContent = res.data.microscopic || '-';
+                        
+                        // Handle Gem Image
+                        if (res.data.gemImage) {
+                            document.getElementById('resImage').src = res.data.gemImage;
+                            document.getElementById('resImage').style.display = 'block';
+                        } else {
+                            document.getElementById('resImage').style.display = 'none';
+                        }
+
+                        // Handle Report Image and show Download Buttons
+                        if (res.data.reportImage) {
+                            document.getElementById('resCertLink').href = res.data.reportImage;
+                            document.getElementById('downloadActions').style.display = 'flex';
+                        } else {
+                            document.getElementById('downloadActions').style.display = 'none';
+                        }
+
+                        document.getElementById('resultCard').style.display = 'block';
+                    } else {
+                        document.getElementById('errorText').textContent = res.message || "Report not found.";
+                        document.getElementById('errorMessage').style.display = 'block';
+                    }
+                } catch (jsonError) {
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('errorText').textContent = "Database Error! Please check get_report.php DB credentials.";
+                    document.getElementById('errorMessage').style.display = 'block';
+                    console.log("Raw Server Error:", rawText); 
+                }
+
+            } catch (error) {
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('errorText').textContent = "Network Error: " + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        }
+        
+        // Auto-check if URL has an ID parameter from the QR Code
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = urlParams.get('id');
+            if(id) {
+                document.getElementById('reportInput').value = id;
+                fetchReport();
+            }
+        };
+    </script>
+</body>
+</html>

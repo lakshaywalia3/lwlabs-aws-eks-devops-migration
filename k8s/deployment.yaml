@@ -1,0 +1,80 @@
+---
+# 1. DATABASE SECRETS (Base64 Encoded)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lwlabs-db-secrets
+type: Opaque
+data:
+  DB_HOST: <ADD_BASE64_ENCODED_RDS_ENDPOINT_HERE>
+  DB_USER: <ADD_BASE64_ENCODED_DB_USERNAME_HERE>
+  DB_PASS: <ADD_BASE64_ENCODED_DB_PASSWORD_HERE>
+  DB_NAME: <ADD_BASE64_ENCODED_DB_NAME_HERE>
+
+---
+# 2. APPLICATION DEPLOYMENT
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lwlabs-app
+spec:
+  # Notice: 'replicas' is removed here because the HPA below will manage it automatically!
+  selector:
+    matchLabels:
+      app: lwlabs-app
+  template:
+    metadata:
+      labels:
+        app: lwlabs-app
+    spec:
+      containers:
+      - name: lwlabs-container
+        image: <ADD_YOUR_AWS_ACCOUNT_ID_HERE>.dkr.ecr.ap-south-1.amazonaws.com/lwlabs-app:latest
+        ports:
+        - containerPort: 80
+        envFrom:
+        - secretRef:
+            name: lwlabs-db-secrets
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+
+---
+# 3. LOAD BALANCER SERVICE
+apiVersion: v1
+kind: Service
+metadata:
+  name: lwlabs-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: lwlabs-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+---
+# 4. HORIZONTAL POD AUTOSCALER (HPA)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: lwlabs-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: lwlabs-app
+  minReplicas: 2      # Always keep at least 2 containers running
+  maxReplicas: 20     # Scale up to 20 containers during massive traffic spikes!
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70  # If average CPU goes above 70%, add more containers
